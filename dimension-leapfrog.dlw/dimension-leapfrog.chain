@@ -1,0 +1,9 @@
+ROOT0-DLW-CHAIN-v1
+index : 9
+slug  : dimension-leapfrog
+seal  : 9e5013b048309b1fce12e48eaf290f6bc6af10113510ace2291424db4e66765f
+prev  : 52490acb0105cd380055739555f3751b0a5890eaf2b2ec692e8f4747a769f0ac
+link  : 5f1097446eea78195fd9466a19cf10a3dde15b0e6d2adae9ee8663654e14aee0
+head  : 3447d3a0533aaf1e29a8bdc67a9774884fb3ae9dbc8a17064b7a008ca3c4ec90
+
+— the tether: link = sha256(index|slug|seal|prev). the chain head commits to the whole corpus.
