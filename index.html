@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INSTRUMENT TEMPLATE — clone me</title>
+<!--
+  ============================================================================
+  FOUNDATIONAL INSTRUMENT TEMPLATE  ·  clone this per paper
+  ----------------------------------------------------------------------------
+  · standalone single file. ZERO runtime network fetches. system fonts only.
+    (nothing to block => cannot black-screen the way a CDN dep can.)
+  · 2D canvas channel  = quantitative reads (curves, bars, exact values)
+  · 3D soft-GL channel = spatial intuition (geometry you rotate around)
+    soft-GL = 3D projected by hand onto the 2d context. no WebGL, no library.
+  · fail-loud: any runtime error surfaces on the panel's card, never silent.
+  · verify-then-build: check your numbers in Node/Python BEFORE editing draw2D/draw3D.
+
+  TO USE:  edit PAPER (metadata) · edit draw2D() · edit build3D()+draw3D().
+           the three marked blocks are the only places you touch.
+           the SGL engine + RUNTIME are reusable — leave them alone.
+  ============================================================================
+-->
+<style>
+:root{
+  --bg:#0B0B0B; --ink:#F2EFE9; --org:#FF5A00; --dim:#7A756D; --line:#2A2620; --panel:#121110;
+  --green:#3FBF7F; --amber:#E0B050; --red:#E05555;
+  /* system stacks — no web fonts, truly offline. swap in Archivo/Plex only if you accept a fetch. */
+  --disp: system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --mono: ui-monospace,'SF Mono','Cascadia Code','Source Code Pro',Menlo,Consolas,'DejaVu Sans Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:14px;line-height:1.55}
+.wrap{max-width:1100px;margin:0 auto;padding:0 20px}
+
+header{border-bottom:3px solid var(--org);padding:24px 0 18px}
+header h1{font-family:var(--disp);font-weight:800;font-size:clamp(28px,5.5vw,52px);line-height:.95;text-transform:uppercase;letter-spacing:-.01em}
+header h1 span{color:var(--org)}
+header .sub{margin-top:10px;color:var(--dim);font-size:13px;max-width:640px;line-height:1.6}
+header .tier{display:inline-block;margin-top:12px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:3px 9px;border:2px solid}
+header .tier.g{color:var(--green);border-color:var(--green)}
+header .tier.a{color:var(--amber);border-color:var(--amber)}
+header .tier.r{color:var(--red);border-color:var(--red)}
+
+section{padding:28px 0;border-bottom:1px solid var(--line)}
+.sec-h{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+.viz{background:var(--panel);border:1px solid var(--line);border-radius:2px;position:relative;overflow:hidden}
+.viz-2d{height:400px}.viz-3d{height:460px}
+.viz canvas{display:block;width:100%;height:100%;touch-action:none}
+.viz .cap{position:absolute;left:12px;bottom:10px;font-size:11px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;pointer-events:none}
+.viz .badge{position:absolute;right:12px;top:10px;font-size:10px;color:var(--org);letter-spacing:.1em;text-transform:uppercase;border:2px solid var(--org);padding:2px 7px}
+.viz .hint{position:absolute;left:12px;top:10px;font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;pointer-events:none}
+.viz .fb{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:var(--bg);padding:30px;text-align:center;color:var(--org);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.prose{font-size:13px;line-height:1.7;max-width:680px;color:var(--ink)}
+.prose b{color:var(--org)}
+footer{padding:22px 0 44px;font-size:11px;color:var(--dim);line-height:1.8}
+.ctrls2{position:absolute;left:12px;bottom:10px;display:flex;align-items:center;gap:10px;z-index:3;flex-wrap:wrap}
+.ctrls2 label{font-size:10px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.ctrls2 input[type=range]{width:150px;accent-color:var(--org)}
+.tog{background:var(--bg);color:var(--org);border:2px solid var(--org);font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;cursor:pointer}
+.tog:hover{background:var(--org);color:var(--bg)}
+.tog:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.tog.on{border-color:var(--amber);color:var(--amber)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1 id="hTitle">DIMENSION <span>LEAPFROG</span></h1>
+    <div class="sub" id="hSub">Real attention, extracted from a trained BERT-tiny model (numpy forward pass, layer 0). Convert it to a relational geometry and tour the dimensions by leapfrog — carry two axes forward each step, each axis walks up one dimension. Toggle heads, or paste your own N×N attention matrix. This is a real diagnostic now, not a demo.</div>
+    <span class="tier a" id="hTier">GREEN — REAL BERT ATTENTION, EXACT MDS · LEAPFROG TOUR</span>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="sec-h">2D · Spectrum — the 3-axis window sliding up</div>
+    <div class="viz viz-2d">
+      <canvas id="cv2"></canvas>
+      <div class="badge">CANVAS 2D</div>
+      <div class="cap" id="cap2">demo: sine — replace in draw2D()</div>
+      <div class="fb" id="fb2">CANVAS 2D UNAVAILABLE</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-h">3D · The Tour — each axis walks up one dimension</div>
+    <div class="viz viz-3d">
+      <canvas id="cv3"></canvas>
+      <div class="badge">SOFT-GL · NO GPU · NO LIB</div>
+      <div class="hint">DRAG ROTATE · WHEEL ZOOM</div>
+      <div class="ctrls2"><button id="playBtn" class="tog on">▶ PLAY TOUR</button><label>window d<span id="wLab">1</span>–d<span id="wLab2">3</span></label><input type="range" id="wSlider" min="0" max="380" value="0"><button id="headBtn" class="tog">HEAD 0 ↔ 1</button><button id="pasteBtn" class="tog">PASTE MATRIX</button></div>
+      <div class="cap" id="cap3">demo: lattice + orbit — replace in build3D()/draw3D()</div>
+      <div class="fb" id="fb3">RENDER FAILED — <span id="fb3why"></span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-h">Notes</div>
+    <p class="prose"><b>This is real now.</b> The attention matrix touring below was extracted from a trained <b>BERT-tiny</b> (google/bert_uncased_L-2_H-128_A-2), layer 0, by a from-scratch numpy forward pass on a 15-token sentence \u2014 no synthetic weights. Its relational geometry: <b>~5 intrinsic dimensions, 10.2% curvature</b>, genuinely more curved than any modeled version. Toggle HEAD to compare the model's two attention heads; PASTE MATRIX to tour your own N\u00d7N attention (from Claude Code, a HuggingFace model, anywhere).</p>
+    <p class="prose"><b>The leapfrog, unchanged.</b> You can't add orthogonal MDS dimensions, but you can tour them: slide a 3-axis window up the eigenspectrum, carrying two forward each step so each screen axis morphs up exactly one dimension \u2014 a discrete grand tour. Watch the real tokens (the words are labeled) move as the window climbs. With only ~11 positive dimensions here the tour is short, but the same code scales to any matrix.</p>
+    <p class="prose"><b>Toy to tool, completed.</b> Every earlier instrument in this series was amber \u2014 modeled attention reproducing documented structure. This one is <b>green</b>: the attention is real, extracted, and the geodesic\u2013MDS\u2013leapfrog pipeline (verified across the whole series) now runs on it live. Same method, real input. The only synthetic thing left is nothing.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    FOUNDATIONAL TEMPLATE · zero runtime deps · system fonts · fail-loud · house style · verify-then-build. Clone per paper; keep the engine, swap the two draw blocks.
+  </div>
+</footer>
+
+<script>
+'use strict';
+// fail-loud: any uncaught error (including inside the animation loop) shows on the 3D card.
+window.addEventListener('error',function(e){
+  var fb=document.getElementById('fb3');if(fb){fb.style.display='flex';}
+  var w=document.getElementById('fb3why');if(w)w.textContent='RUNTIME: '+String(e.message||'?').toUpperCase().slice(0,90);
+});
+
+/* ==========================================================================
+   BLOCK 1 · PAPER  — edit metadata here
+   ========================================================================== */
+var PAPER={
+  title:'DIMENSION LEAPFROG',
+  tier:'g',
+  cap2:'eigenvalue spectrum \u00b7 the 3 highlighted bars are the current window, sliding up',
+  cap3:'tokens in dims [k,k+1,k+2] \u00b7 carry 2 forward \u00b7 each axis morphs up one dimension'
+};
+
+// ===== REAL attention extracted from google/bert_uncased_L-2_H-128_A-2 (numpy forward, layer 0) =====
+var REAL={"tokens":["[CLS]","the","quick","brown","fox","jumps","over","the","lazy","dog","near","the","river","bank","[SEP]"],"N":15,"head0":[[0.21535,0.02176,0.02941,0.0762,0.06287,0.10155,0.0184,0.01872,0.04182,0.0835,0.03801,0.01887,0.16374,0.07453,0.03526],[0.5961,0.02587,0.00165,0.00229,0.00338,0.00514,0.00279,0.06637,0.00483,0.00391,0.00945,0.12387,0.12485,0.0166,0.01291],[0.02509,0.00194,0.57511,0.00123,0.00319,0.10448,0.02855,0.00362,0.11088,0.01002,0.04565,0.01025,0.01981,0.03248,0.02771],[0.00673,0.00098,0.00067,0.8209,0.02533,0.00785,0.00408,0.00129,0.01043,0.02353,0.00516,0.00285,0.04136,0.0062,0.04263],[0.00118,0.00043,0.00092,0.01281,0.83487,0.00123,0.00272,0.00037,0.01707,0.05305,0.00664,0.00064,0.006,0.01028,0.05177],[0.00214,0.00062,0.01074,0.00181,0.00082,0.91097,0.00325,0.0006,0.00661,0.00761,0.0134,0.0009,0.01651,0.00302,0.02101],[0.43225,0.02009,0.03642,0.01218,0.00646,0.02634,0.11315,0.00727,0.01478,0.01303,0.03726,0.01553,0.06455,0.13272,0.06799],[0.76458,0.08437,0.00208,0.00172,0.00166,0.00253,0.00069,0.01831,0.00111,0.00072,0.00238,0.05227,0.04799,0.0105,0.00909],[0.00533,0.00497,0.05289,0.01597,0.02804,0.0201,0.0058,0.00139,0.73007,0.06068,0.00768,0.00336,0.01991,0.0228,0.02103],[0.00219,0.00183,0.00194,0.0159,0.04108,0.00541,0.00421,0.00066,0.03298,0.85523,0.00258,0.00072,0.00311,0.00736,0.0248],[0.54359,0.06843,0.01499,0.00994,0.00687,0.01071,0.01987,0.02643,0.00522,0.0043,0.06322,0.01283,0.10802,0.06839,0.0372],[0.73953,0.1404,0.00559,0.00378,0.00287,0.00366,0.00112,0.05024,0.00253,0.00081,0.00103,0.0166,0.01671,0.00621,0.00891],[0.03049,0.0144,0.00247,0.02739,0.00876,0.00468,0.00247,0.00801,0.00679,0.00466,0.01276,0.00277,0.86241,0.00461,0.00732],[0.07291,0.01176,0.01649,0.00817,0.0211,0.00458,0.02728,0.0066,0.03204,0.01787,0.03319,0.00337,0.0114,0.72318,0.01007],[0.61381,0.08145,0.00544,0.00759,0.00541,0.08536,0.01617,0.05818,0.00216,0.0113,0.01643,0.04806,0.03157,0.00812,0.00894]],"head1":[[0.07378,0.05406,0.05282,0.08439,0.08233,0.12528,0.03163,0.04488,0.08111,0.06599,0.04405,0.04095,0.0824,0.06448,0.07184],[0.01238,0.00586,0.03687,0.02916,0.07672,0.0504,0.01437,0.00437,0.04978,0.09679,0.07232,0.00388,0.28465,0.19702,0.06544],[0.01659,0.04977,0.03331,0.14045,0.07648,0.15539,0.04744,0.03337,0.07639,0.09166,0.03888,0.02614,0.04762,0.02267,0.14384],[0.02487,0.02697,0.03689,0.06487,0.14572,0.0833,0.00989,0.02404,0.07059,0.14447,0.07039,0.01672,0.15125,0.04503,0.085],[0.04088,0.06515,0.05993,0.09811,0.0649,0.09718,0.02315,0.0615,0.08116,0.10591,0.09849,0.0345,0.05792,0.03467,0.07655],[0.00812,0.02349,0.0768,0.07577,0.0788,0.01434,0.0592,0.03934,0.09457,0.11635,0.08904,0.02457,0.14003,0.0663,0.09327],[0.05227,0.03381,0.06461,0.02859,0.06896,0.18768,0.01163,0.05449,0.13657,0.05742,0.06338,0.03766,0.05298,0.04612,0.10384],[0.01016,0.00325,0.0254,0.01908,0.05645,0.06764,0.02273,0.00538,0.06506,0.11138,0.10546,0.00427,0.28021,0.16854,0.05498],[0.03032,0.02413,0.02307,0.0837,0.09866,0.09741,0.01942,0.04038,0.05392,0.1188,0.09401,0.03355,0.16746,0.04768,0.06748],[0.03398,0.03788,0.04146,0.03996,0.06876,0.06456,0.01727,0.06591,0.05759,0.06164,0.11635,0.0591,0.13735,0.11385,0.08433],[0.02601,0.03488,0.02582,0.04865,0.15094,0.06161,0.02779,0.07647,0.10623,0.0665,0.02681,0.06856,0.05718,0.07901,0.14352],[0.00788,0.00233,0.01869,0.01233,0.03192,0.04195,0.01429,0.00402,0.05755,0.10559,0.09966,0.00428,0.30172,0.22814,0.06964],[0.0348,0.04305,0.01735,0.05215,0.08439,0.07429,0.02937,0.06341,0.0977,0.16105,0.06802,0.07554,0.02272,0.04604,0.13009],[0.0218,0.05267,0.03698,0.05082,0.03871,0.10406,0.02313,0.07006,0.0865,0.10597,0.11782,0.10363,0.0513,0.03424,0.10233],[0.08631,0.06014,0.03708,0.02957,0.05135,0.05336,0.0486,0.06554,0.06159,0.05979,0.07108,0.1005,0.07124,0.06923,0.13462]],"sentence":"the quick brown fox jumps over the lazy dog near the river bank","model":"google/bert_uncased_L-2_H-128_A-2 layer0"};
+
+var LF_head=0;
+// process ANY attention matrix: symmetric geodesic -> classical MDS -> full eigencoords
+function LF_process(A){
+  var n=A.length, INF=1e9, D=[];
+  for(var i=0;i<n;i++){D.push([]);for(var j=0;j<n;j++){
+    if(i===j){D[i].push(0);continue;}
+    var sim=0.5*(A[i][j]+A[j][i]);
+    D[i].push(sim>1e-6?-Math.log(sim):INF);}}
+  for(var k=0;k<n;k++)for(var i=0;i<n;i++)for(var j=0;j<n;j++)if(D[i][k]+D[k][j]<D[i][j])D[i][j]=D[i][k]+D[k][j];
+  var D2=D.map(function(r){return r.map(function(v){return v*v;});});
+  var rm=D2.map(function(r){return r.reduce(function(x,y){return x+y;},0)/n;});var gm=rm.reduce(function(x,y){return x+y;},0)/n;
+  var B=[];for(var i=0;i<n;i++){B.push([]);for(var j=0;j<n;j++)B[i].push(-0.5*(D2[i][j]-rm[i]-rm[j]+gm));}
+  var a=B.map(function(r){return r.slice();});
+  var V=[];for(var i=0;i<n;i++){V.push([]);for(var j=0;j<n;j++)V[i].push(i===j?1:0);}
+  for(var sw=0;sw<90;sw++){var off=0;for(var i=0;i<n;i++)for(var j=i+1;j<n;j++)off+=a[i][j]*a[i][j];if(off<1e-11)break;
+    for(var p=0;p<n;p++)for(var q=p+1;q<n;q++){if(Math.abs(a[p][q])<1e-14)continue;
+      var th=(a[q][q]-a[p][p])/(2*a[p][q]),t=Math.sign(th)/(Math.abs(th)+Math.sqrt(th*th+1));if(th===0)t=1;var c=1/Math.sqrt(t*t+1),s=t*c;
+      for(var k=0;k<n;k++){var akp=a[k][p],akq=a[k][q];a[k][p]=c*akp-s*akq;a[k][q]=s*akp+c*akq;}
+      for(var k=0;k<n;k++){var apk=a[p][k],aqk=a[q][k];a[p][k]=c*apk-s*aqk;a[q][k]=s*apk+c*aqk;}
+      for(var k=0;k<n;k++){var vkp=V[k][p],vkq=V[k][q];V[k][p]=c*vkp-s*vkq;V[k][q]=s*vkp+c*vkq;}}}
+  var ev=[];for(var i=0;i<n;i++)ev.push({val:a[i][i],idx:i});
+  ev.sort(function(x,y){return y.val-x.val;});
+  var pos=ev.filter(function(e){return e.val>1e-9;});
+  var coords=[];for(var t=0;t<n;t++)coords.push(pos.map(function(e){return V[t][e.idx]*Math.sqrt(e.val);}));
+  var vals=pos.map(function(e){return e.val;});
+  var negSum=ev.filter(function(e){return e.val<0;}).reduce(function(x,e){return x-e.val;},0);
+  var posSum=vals.reduce(function(x,y){return x+y;},0);
+  var sp2=vals.reduce(function(x,y){return x+y*y;},0);
+  return {coords:coords, vals:vals, tot:posSum, nDim:pos.length, N:n,
+    dim:posSum*posSum/sp2, curv:negSum/(posSum+negSum)};
+}
+var LF = LF_process(REAL.head0);
+var LF_tokens = REAL.tokens;
+var LF_win=0, LF_play=true;
+var LF_tick=function(){};
+
+/* ==========================================================================
+   SGL ENGINE · reusable soft-GL — DO NOT EDIT (extend if you must)
+   3D projected by hand onto the 2d context. state + helpers.
+   ========================================================================== */
+var SGL={
+  yaw:0.4, pitch:0.15, dist:48, FOV:620, CY:7,   // camera state (CY = look-at height)
+  ctx:null, W:0, H:0, DPR:1, f:620,
+  rot:function(x,y,z){
+    var cy=Math.cos(this.yaw),sy=Math.sin(this.yaw),cx=Math.cos(this.pitch),sx=Math.sin(this.pitch);
+    var X=x*cy+z*sy, Z=-x*sy+z*cy, Y=(y-this.CY)*cx-Z*sx, Z2=(y-this.CY)*sx+Z*cx;
+    return [X,Y,Z2];
+  },
+  project:function(x,y,z){                        // -> [sx,sy,depth,scale] | null
+    var p=this.rot(x,y,z), zc=this.dist-p[2];
+    if(zc<0.5)return null;
+    var s=this.f/zc;
+    return [this.W/2+p[0]*s, this.H/2-p[1]*s, zc, s];
+  },
+  dot:function(x,y,z,r,col,alpha){
+    var p=this.project(x,y,z);if(!p)return;
+    var c=this.ctx;c.globalAlpha=alpha==null?1:alpha;c.fillStyle=col;
+    c.beginPath();c.arc(p[0],p[1],Math.max(0.6,r*p[3]),0,7);c.fill();c.globalAlpha=1;
+  },
+  line:function(x1,y1,z1,x2,y2,z2,col,w,dash){
+    this.path([[x1,y1,z1],[x2,y2,z2]],col,w,dash);
+  },
+  path:function(pts,col,w,dash){                  // polyline through 3D points, clips behind-cam gaps
+    var c=this.ctx;c.strokeStyle=col;c.lineWidth=(w||1)*this.DPR;
+    if(dash)c.setLineDash(dash.map(function(d){return d*this.DPR}.bind(this)));
+    c.beginPath();var started=false;
+    for(var i=0;i<pts.length;i++){
+      var p=this.project(pts[i][0],pts[i][1],pts[i][2]);
+      if(!p){started=false;continue;}
+      if(!started){c.moveTo(p[0],p[1]);started=true;}else c.lineTo(p[0],p[1]);
+    }
+    c.stroke();c.setLineDash([]);
+  },
+  ring:function(cx,cy,cz,r,axis,col,w,dash){      // circle; axis 'z' upright (xy), 'y' flat (xz)
+    var pts=[];for(var i=0;i<=48;i++){var a=i/48*Math.PI*2;
+      if(axis==='y')pts.push([cx+Math.cos(a)*r,cy,cz+Math.sin(a)*r]);
+      else pts.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r,cz]);}
+    this.path(pts,col,w,dash);
+  },
+  cloud:function(points,colFn,rFn,alphaFn){       // painter-sorted point cloud; fns take (pt,index)
+    var self=this;
+    var buf=points.map(function(pt,i){return [pt,i,self.dist-self.rot(pt[0],pt[1],pt[2])[2]];});
+    buf.sort(function(a,b){return b[2]-a[2];});   // far first
+    buf.forEach(function(b){
+      var pt=b[0],i=b[1];
+      self.dot(pt[0],pt[1],pt[2], rFn?rFn(pt,i):0.3, colFn?colFn(pt,i):'#F2EFE9', alphaFn?alphaFn(pt,i):1);
+    });
+  },
+  text3:function(str,x,y,z,col,px){               // label anchored at a 3D point
+    var p=this.project(x,y,z);if(!p)return;
+    var c=this.ctx;c.fillStyle=col;c.font=((px||10)*this.DPR)+'px '+getComputedStyle(document.body).fontFamily;
+    c.textAlign='center';c.fillText(str,p[0],p[1]);
+  }
+};
+
+/* ==========================================================================
+   BLOCK 2 · draw2D — YOUR QUANTITATIVE VISUAL
+   gets a fresh cleared context each frame. (ctx, W, H, DPR, t) provided.
+   demo draws a sine; replace the body.
+   ========================================================================== */
+function draw2D(ctx,W,H,DPR,t){
+  var f=function(n){return n*DPR;};
+  var padL=20*DPR,padR=18*DPR,padT=64*DPR,padB=30*DPR;
+  var X0=padL,X1=W-padR,Y0=padT,Y1=H-padB;
+  var vals=LF.vals, n=vals.length, vmax=vals[0];
+  var bw=(X1-X0)/n;
+  var k=Math.floor(LF_win), frac=LF_win-k;
+  // bars, highlight the current window (3 bars, interpolating position)
+  for(var i=0;i<n;i++){
+    var bh=(Y1-Y0)*(vals[i]/vmax);
+    // window membership: bars k,k+1,k+2 fading to k+1,k+2,k+3
+    var inWin = (i>=k && i<=k+2), inNext=(i>=k+1 && i<=k+3);
+    var hot = inWin || (frac>0.01 && inNext);
+    ctx.fillStyle = hot ? '#FF5A00' : '#3A352E';
+    ctx.fillRect(X0+i*bw+bw*0.15, Y1-bh, bw*0.7, bh);
+  }
+  // window bracket
+  var wx0=X0+k*bw, wx1=X0+(k+3)*bw;
+  ctx.strokeStyle='#E0B050';ctx.lineWidth=f(1.5);
+  ctx.strokeRect(wx0+f(1),Y0-f(2),(wx1-wx0),Y1-Y0+f(4));
+  // readouts
+  var winV=(vals[k]+(vals[k+1]||0)+(vals[k+2]||0))/LF.tot;
+  var cum=0;for(var i=0;i<=k+2 && i<n;i++)cum+=vals[i];cum/=LF.tot;
+  ctx.textAlign='left';ctx.font=f(12)+'px '+MONO;
+  ctx.fillStyle='#F2EFE9';ctx.fillText('window: dims d'+(k+1)+'\u2013d'+(k+3)+' of '+n,f(16),f(20));
+  ctx.fillStyle='#FF5A00';ctx.fillText('this window: '+(winV*100).toFixed(1)+'% of variance',f(16),f(36));
+  ctx.fillStyle='#3FBF7F';ctx.fillText('toured so far (d1\u2013d'+(k+3)+'): '+(cum*100).toFixed(0)+'%  \u2014  vs static top-3: '+((vals[0]+vals[1]+vals[2])/LF.tot*100).toFixed(0)+'%',f(16),f(52));
+  ctx.fillStyle='#56C8F0';ctx.textAlign='left';ctx.font=f(10)+'px '+MONO;
+  ctx.fillText('real geometry: intrinsic dim '+LF.dim.toFixed(1)+', curvature '+(LF.curv*100).toFixed(1)+'%',f(16),f(66));
+  ctx.fillStyle='#7A756D';ctx.textAlign='right';ctx.font=f(9)+'px '+MONO;
+  ctx.fillText('eigenvalue spectrum (positive dims)',X1,f(20));
+}
+
+/* ==========================================================================
+   BLOCK 3 · build3D + draw3D — YOUR SPATIAL VISUAL
+   build3D() runs once, returns your geometry.
+   draw3D(t) runs each frame with SGL ready (SGL.ctx set, size current).
+   demo: a small lattice + one orbiting dot; replace both.
+   ========================================================================== */
+var SCENE;
+function build3D(){ return {}; }
+function draw3D(t){
+  LF_tick();
+  var C=LF.coords, n=LF.nDim, NT=LF.N;
+  var k=Math.floor(LF_win), frac=LF_win-k;
+  if(k>n-4){k=n-4;frac=0;} if(k<0){k=0;frac=0;}
+  function pos(tok){
+    var c=C[tok];
+    return [(1-frac)*c[k]+frac*c[k+1], (1-frac)*c[k+1]+frac*c[k+2], (1-frac)*c[k+2]+frac*c[k+3]];
+  }
+  var amax=0;for(var tk=0;tk<NT;tk++){var p=pos(tk);for(var d=0;d<3;d++)if(Math.abs(p[d])>amax)amax=Math.abs(p[d]);}
+  var sc=amax>0?12/amax:1;
+  var P=[];for(var tk=0;tk<NT;tk++){var p=pos(tk);P.push([p[0]*sc,SGL.CY+p[1]*sc,p[2]*sc]);}
+  // proximity edges
+  for(var i=0;i<NT;i++)for(var j=i+1;j<NT;j++){
+    var a=P[i],b=P[j];var dd=Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+    if(dd<3.5)SGL.line(a[0],a[1],a[2],b[0],b[1],b[2],'rgba(122,117,109,0.2)',0.7);
+  }
+  // token nodes + real word labels
+  for(var tk=0;tk<NT;tk++){
+    var special=(LF_tokens[tk]==='[CLS]'||LF_tokens[tk]==='[SEP]');
+    SGL.dot(P[tk][0],P[tk][1],P[tk][2], special?0.65:0.42, special?'#FF5A00':'#56C8F0');
+    if(sc>0)SGL.text3(LF_tokens[tk], P[tk][0], P[tk][1]+0.9, P[tk][2], special?'#FF5A00':'#8B939C', 8);
+  }
+  var ax=(frac<0.5)?k:k+1, ay=(frac<0.5)?k+1:k+2, az=(frac<0.5)?k+2:k+3;
+  SGL.text3('X: d'+(ax+1)+'  Y: d'+(ay+1)+'  Z: d'+(az+1)+'   (carrying 2 forward)', 0, SGL.CY+15, 0, '#7A756D', 10);
+  SGL.text3('real BERT-tiny attention \u00b7 head '+LF_head+' \u00b7 '+NT+' tokens', 0, SGL.CY-15, 0, '#7A756D', 9);
+}
+
+/* ==========================================================================
+   RUNTIME · resize-safe loops, controls, fail-loud — DO NOT EDIT
+   ========================================================================== */
+var MONO;
+(function(){
+  MONO=getComputedStyle(document.body).fontFamily;
+  // apply PAPER metadata
+  document.getElementById('cap2').textContent=PAPER.cap2;
+  document.getElementById('cap3').textContent=PAPER.cap3;
+  var tierEl=document.getElementById('hTier');tierEl.className='tier '+PAPER.tier;
+  // leapfrog controls
+  var pb=document.getElementById('playBtn'), ws=document.getElementById('wSlider');
+  var wl=document.getElementById('wLab'), wl2=document.getElementById('wLab2');
+  var maxWin=LF.nDim-4;
+  if(ws)ws.max=Math.round(maxWin*10);
+  function syncLabels(){var k=Math.floor(LF_win);wl.textContent=(k+1);wl2.textContent=(k+3);}
+  if(pb)pb.addEventListener('click',function(){LF_play=!LF_play;pb.classList.toggle('on',LF_play);pb.textContent=LF_play?'\u25b6 PLAY TOUR':'\u2225 PAUSED';});
+  if(ws)ws.addEventListener('input',function(){LF_play=false;if(pb){pb.classList.remove('on');pb.textContent='\u2225 PAUSED';}LF_win=(+ws.value)/10;syncLabels();});
+  // auto-advance hook: increment LF_win each frame when playing (driven from the 3D loop via a shared ticker)
+  LF_tick=function(){ if(LF_play){ LF_win+=0.012; if(LF_win>maxWin)LF_win=0; if(ws)ws.value=Math.round(LF_win*10); syncLabels(); } };
+  syncLabels();
+  // head toggle: swap between the two real BERT heads
+  var hb=document.getElementById('headBtn');
+  if(hb)hb.addEventListener('click',function(){
+    LF_head=1-LF_head; LF=LF_process(LF_head===0?REAL.head0:REAL.head1);
+    maxWin=LF.nDim-4; if(ws)ws.max=Math.round(maxWin*10); LF_win=0;
+    hb.textContent='HEAD '+LF_head+' \u2194 '+(1-LF_head);
+  });
+  // paste custom N×N matrix (rows newline-separated, values comma/space)
+  var xb=document.getElementById('pasteBtn');
+  if(xb)xb.addEventListener('click',function(){
+    var txt=prompt('Paste an N\u00d7N attention matrix (rows on separate lines, values comma or space separated):');
+    if(!txt)return;
+    try{
+      var A=txt.trim().split(/\n+/).map(function(r){return r.trim().split(/[\s,]+/).map(Number);});
+      if(A.length<4||A.some(function(r){return r.length!==A.length||r.some(isNaN);})) throw 'not square / has NaN';
+      LF=LF_process(A); LF_tokens=A.map(function(_,i){return 't'+i;});
+      maxWin=Math.max(0,LF.nDim-4); if(ws)ws.max=Math.round(maxWin*10); LF_win=0;
+      xb.textContent='PASTED '+A.length+'\u00d7'+A.length;
+    }catch(e){ alert('Could not parse matrix: '+e); }
+  });
+
+  // ---- 2D loop ----
+  (function(){
+    var cv=document.getElementById('cv2'),ctx=cv.getContext&&cv.getContext('2d');
+    if(!ctx){document.getElementById('fb2').style.display='flex';return;}
+    var DPR=Math.min(window.devicePixelRatio||1,2),lastW=0,lastH=0,t=0;
+    function frame(){
+      requestAnimationFrame(frame);
+      var w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;
+      if(w!==lastW||h!==lastH){lastW=w;lastH=h;cv.width=w*DPR;cv.height=h*DPR;}
+      t+=0.016;
+      ctx.fillStyle='#121110';ctx.fillRect(0,0,cv.width,cv.height);
+      draw2D(ctx,cv.width,cv.height,DPR,t);
+    }
+    frame();
+  })();
+
+  // ---- 3D loop (soft-GL) ----
+  (function(){
+    var cv=document.getElementById('cv3'),ctx=cv.getContext&&cv.getContext('2d');
+    if(!ctx){document.getElementById('fb3').style.display='flex';document.getElementById('fb3why').textContent='NO 2D CONTEXT';return;}
+    SGL.ctx=ctx;SCENE=build3D();
+    var lastW=0,lastH=0,t=0;
+    function resize(){
+      var w=cv.clientWidth||600,h=cv.clientHeight||460;if(!w||!h)return;
+      if(w===lastW&&h===lastH)return;lastW=w;lastH=h;
+      SGL.DPR=Math.min(window.devicePixelRatio||1,2);
+      cv.width=w*SGL.DPR;cv.height=h*SGL.DPR;SGL.W=cv.width;SGL.H=cv.height;
+      SGL.f=SGL.FOV*SGL.DPR*Math.min(w/1100,1.1);
+    }
+    // controls
+    var drag=false,px=0,py=0;
+    cv.addEventListener('pointerdown',function(e){drag=true;px=e.clientX;py=e.clientY;});
+    window.addEventListener('pointermove',function(e){if(!drag)return;
+      SGL.yaw+=(e.clientX-px)*0.006;SGL.pitch=Math.max(-0.6,Math.min(0.7,SGL.pitch+(e.clientY-py)*0.004));
+      px=e.clientX;py=e.clientY;});
+    window.addEventListener('pointerup',function(){drag=false;});
+    cv.addEventListener('wheel',function(e){e.preventDefault();SGL.dist=Math.max(22,Math.min(95,SGL.dist+e.deltaY*0.03));},{passive:false});
+    function frame(){
+      requestAnimationFrame(frame);resize();if(!SGL.W)return;
+      if(!drag)SGL.yaw+=0.001;
+      t+=0.016;
+      ctx.fillStyle='#121110';ctx.fillRect(0,0,SGL.W,SGL.H);
+      draw3D(t);
+    }
+    frame();
+  })();
+})();
+</script>
+</body>
+</html>
